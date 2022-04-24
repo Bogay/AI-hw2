@@ -4,7 +4,7 @@ mod search;
 mod vec2;
 
 use board::{Board, Move};
-use clap::{ArgEnum, Parser};
+use clap::{ArgEnum, Parser, Subcommand};
 use log;
 use std::fs;
 use std::io::Write;
@@ -21,18 +21,26 @@ enum Algorithm {
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Path to the input file
-    #[clap(short, long)]
-    input: String,
-    /// Path to the output file, default to stdout
-    #[clap(short, long)]
-    output: Option<String>,
-    /// Algorithm to use, default to IDDFS
-    #[clap(arg_enum, short, long, default_value_t = Algorithm::IDDFS)]
-    algorithm: Algorithm,
+    #[clap(subcommand)]
+    command: Command,
     /// Output verbose level
     #[clap(short, long, parse(from_occurrences))]
     verbose: usize,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    Search {
+        /// Path to the input file
+        #[clap(short, long)]
+        input: String,
+        /// Path to the output file, default to stdout
+        #[clap(short, long)]
+        output: Option<String>,
+        /// Algorithm to use, default to IDDFS
+        #[clap(arg_enum, short, long, default_value_t = Algorithm::IDDFS)]
+        algorithm: Algorithm,
+    },
 }
 
 fn write_success_result(
@@ -81,27 +89,35 @@ fn main() -> std::io::Result<()> {
     let start = Instant::now();
     let args = Args::parse();
     set_log_level(&args);
-    let board = fs::read_to_string(args.input)?
-        .parse::<Board>()
-        .expect("Invalid input file");
-    let output: Box<dyn Write> = match args.output {
-        Some(output) => Box::new(fs::File::create(output).unwrap()),
-        None => Box::new(std::io::stdout()),
-    };
-    let mut output = std::io::BufWriter::new(output);
+    match args.command {
+        Command::Search {
+            input,
+            output,
+            algorithm,
+        } => {
+            let board = fs::read_to_string(input)?
+                .parse::<Board>()
+                .expect("Invalid input file");
+            let output: Box<dyn Write> = match output {
+                Some(output) => Box::new(fs::File::create(output).unwrap()),
+                None => Box::new(std::io::stdout()),
+            };
+            let mut output = std::io::BufWriter::new(output);
 
-    let moves = match args.algorithm {
-        Algorithm::IDDFS => search::iddfs(board),
-        Algorithm::IDAStar => todo!(),
-        Algorithm::Manual => search::manual(board),
-    };
-    match moves {
-        Some(moves) => {
-            let duration = start.elapsed();
-            write_success_result(duration, moves, &mut output)?;
-        }
-        None => {
-            write_fail_result(&mut output)?;
+            let moves = match algorithm {
+                Algorithm::IDDFS => search::iddfs(board),
+                Algorithm::IDAStar => todo!(),
+                Algorithm::Manual => search::manual(board),
+            };
+            match moves {
+                Some(moves) => {
+                    let duration = start.elapsed();
+                    write_success_result(duration, moves, &mut output)?;
+                }
+                None => {
+                    write_fail_result(&mut output)?;
+                }
+            }
         }
     }
 
