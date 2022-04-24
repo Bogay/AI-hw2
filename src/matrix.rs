@@ -42,6 +42,38 @@ where
     }
 }
 
+impl<T> Matrix2D<T>
+where
+    T: Clone + Default + PartialEq,
+{
+    pub fn try_fill_without_cover(
+        &mut self,
+        anchor: Vec2,
+        size: Vec2,
+        value: T,
+    ) -> Result<(), String> {
+        for dy in 0..size.y {
+            for dx in 0..size.x {
+                match self.get(&anchor + &Vec2::new(dx, dy)) {
+                    Some(value) if value != &T::default() => {
+                        return Err("Fill area covers non-default value".to_string())
+                    }
+                    None => return Err("Fill area out of range".to_string()),
+                    _ => {}
+                }
+            }
+        }
+
+        for dy in 0..size.y {
+            for dx in 0..size.x {
+                *self.get_mut(&anchor + &Vec2::new(dx, dy)).unwrap() = value.clone();
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl<T> Matrix2D<T> {
     #[must_use]
     pub fn size(&self) -> Vec2 {

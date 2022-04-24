@@ -160,7 +160,7 @@ fn main() -> std::io::Result<()> {
                         let id = next_id;
                         next_id += 1;
                         for block_size in &possible_block_sizes {
-                            if grid.try_fill(pos, *block_size, id).is_ok() {
+                            if grid.try_fill_without_cover(pos, *block_size, id).is_ok() {
                                 break;
                             }
                         }
@@ -170,8 +170,9 @@ fn main() -> std::io::Result<()> {
                     }
                 }
             }
-            let mut board: Board = Board::try_from(grid).expect("Invalid input grid");
 
+            let mut board: Board = Board::try_from(grid).expect("Invalid input grid");
+            // Randomly shuffle board
             let mut rng = thread_rng();
             for _i in 0..shuffle_round {
                 let possible_moves = board.possible_moves();
@@ -181,7 +182,7 @@ fn main() -> std::io::Result<()> {
                     break;
                 }
             }
-
+            // Write to output file
             let mut output = get_output(output);
             let grid = board.id_grid();
             writeln!(output, "{} {}", size.y, size.x)?;
