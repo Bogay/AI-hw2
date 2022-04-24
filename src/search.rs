@@ -7,8 +7,7 @@ pub fn iddfs(board: Board) -> Option<Vec<Move>> {
 
     loop {
         debug!("limit: {}", limit);
-        let mut board = board.clone();
-        if let Some(mut moves) = dfs(&mut board, limit, &mut Default::default()) {
+        if let Some(mut moves) = dfs(&mut board.clone(), limit, &mut Default::default()) {
             moves.reverse();
             return Some(moves);
         }
@@ -43,6 +42,60 @@ fn dfs(board: &mut Board, limit: i32, visited: &mut BTreeSet<BoardState>) -> Opt
 
     visited.remove(board.state());
     None
+}
+
+pub fn idastar(board: Board) -> Option<Vec<Move>> {
+    let mut f_limit = board.heuristic();
+    loop {
+        match _idastar(&mut board.clone(), 0, f_limit, &mut Default::default()) {
+            Ok(mut moves) => {
+                moves.reverse();
+                return Some(moves);
+            }
+            Err(new_limit) => {
+                if new_limit <= f_limit {
+                    return None;
+                } else {
+                    f_limit = new_limit;
+                }
+            }
+        }
+    }
+}
+
+fn _idastar(
+    board: &mut Board,
+    g_value: i32,
+    mut f_limit: i32,
+    visited: &mut BTreeSet<BoardState>,
+) -> Result<Vec<Move>, i32> {
+    if board.is_goal() {
+        return Ok(vec![]);
+    }
+    if visited.get(board.state()).is_some() {
+        return Err(f_limit);
+    } else {
+        visited.insert(board.state().clone());
+    }
+
+    for (id, dir) in board.possible_moves() {
+        if let Err(e) = board.move_block(id, dir) {
+            trace!("{} {:?}", e, (id, dir));
+            continue;
+        }
+        let f_value = g_value + board.heuristic();
+        if f_value < f_limit {
+            if let Ok(mut moves) = _idastar(board, g_value + 1, f_limit, visited) {
+                moves.push((id, dir));
+                return Ok(moves);
+            }
+        }
+        f_limit = std::cmp::max(f_limit, f_value);
+        assert!(board.move_block(id, dir.inverse()).is_ok());
+    }
+
+    visited.remove(board.state());
+    Err(f_limit)
 }
 
 pub fn manual(mut board: Board) -> Option<Vec<Move>> {

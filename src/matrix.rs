@@ -19,7 +19,7 @@ where
     pub fn fill(size: Vec2, fillin_value: T) -> Self {
         Self {
             size,
-            store: vec![fillin_value; (size.x * size.y) as usize],
+            store: vec![fillin_value; size.x as usize * size.y as usize],
         }
     }
 
@@ -88,18 +88,20 @@ impl<T> Matrix2D<T> {
         if !self.is_inside(&pos) {
             return None;
         }
-        self.store.get((pos.y * self.size.x + pos.x) as usize)
+        self.store
+            .get(pos.y as usize * self.size.x as usize + pos.x as usize)
     }
 
     pub fn get_mut(&mut self, pos: Vec2) -> Option<&mut T> {
         if !self.is_inside(&pos) {
             return None;
         }
-        self.store.get_mut((pos.y * self.size.x + pos.x) as usize)
+        self.store
+            .get_mut(pos.y as usize * self.size.x as usize + pos.x as usize)
     }
 
     pub fn from_vec(size: Vec2, vec: Vec<T>) -> Result<Self, String> {
-        let expect_size = (size.x * size.y) as usize;
+        let expect_size = size.x as usize * size.y as usize;
         if expect_size != vec.len() {
             return Err(format!(
                 "Invalid vector size. expect {}, got {}",
@@ -159,7 +161,7 @@ where
             return Err("Either row or column size should >= 0".to_string());
         }
 
-        let mut id_grid = Vec::with_capacity((size.x * size.y) as usize);
+        let mut id_grid = Vec::with_capacity(size.x as usize * size.y as usize);
         for (row_i, line) in input.into_iter().take(size.y as usize).enumerate() {
             let row = line
                 .split_whitespace()

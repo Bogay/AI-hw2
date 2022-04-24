@@ -289,6 +289,17 @@ impl Board {
     pub fn state(&self) -> &BoardState {
         &self.state
     }
+
+    pub fn heuristic(&self) -> i32 {
+        self.state
+            .blocks
+            .iter()
+            .zip(&self.final_state.blocks)
+            .map(|(curr, target)| {
+                (curr.pos.x - target.pos.x).abs() as i32 + (curr.pos.y - target.pos.y).abs() as i32
+            })
+            .sum()
+    }
 }
 
 impl Display for Board {

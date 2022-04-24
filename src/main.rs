@@ -121,7 +121,7 @@ fn main() -> std::io::Result<()> {
             let mut output = get_output(output);
             let moves = match algorithm {
                 Algorithm::IDDFS => search::iddfs(board),
-                Algorithm::IDAStar => todo!(),
+                Algorithm::IDAStar => search::idastar(board),
                 Algorithm::Manual => search::manual(board),
             };
             match moves {
