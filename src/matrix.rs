@@ -1,4 +1,8 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
 
 use crate::vec2::Vec2;
 
@@ -36,14 +40,14 @@ where
 
         Ok(())
     }
+}
 
+impl<T> Matrix2D<T> {
     #[must_use]
     pub fn size(&self) -> Vec2 {
         self.size
     }
-}
 
-impl<T> Matrix2D<T> {
     fn is_inside(&self, pos: &Vec2) -> bool {
         pos.x >= 0 && pos.x < self.size.x && pos.y >= 0 && pos.y < self.size.y
     }
@@ -74,6 +78,21 @@ impl<T> Matrix2D<T> {
 
         Ok(Self { size, store: vec })
     }
+
+    fn parse_size(line: &str) -> Result<Vec2, String> {
+        let size = line.split_whitespace().collect::<Vec<_>>();
+        if size.len() != 2 {
+            return Err("First line should be the board row & column size".to_string());
+        }
+        let size = size
+            .into_iter()
+            .map(|s| {
+                s.parse::<i8>()
+                    .map_err(|e| format!("Failed to parse size: {}", e))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Vec2::new(size[1], size[0]))
+    }
 }
 
 impl<T> Deref for Matrix2D<T> {
@@ -87,6 +106,45 @@ impl<T> Deref for Matrix2D<T> {
 impl<T> DerefMut for Matrix2D<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.store
+    }
+}
+
+impl<T> FromStr for Matrix2D<T>
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    type Err = String;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut input = input.lines();
+        let line = input.next().ok_or("Missing first line".to_string())?;
+        let size = Self::parse_size(line)?;
+
+        if size.x <= 0 || size.y <= 0 {
+            return Err("Either row or column size should >= 0".to_string());
+        }
+
+        let mut id_grid = Vec::with_capacity((size.x * size.y) as usize);
+        for (row_i, line) in input.into_iter().take(size.y as usize).enumerate() {
+            let row = line
+                .split_whitespace()
+                .map(|v| {
+                    v.parse::<T>()
+                        .map_err(|e| format!("Failed to parse block id: {:?}", e))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            if row.len() != size.x as usize {
+                return Err(format!(
+                    "Invalid line {}: expect {} block, got {}",
+                    row_i,
+                    size.x,
+                    row.len(),
+                ));
+            }
+            id_grid.extend(row);
+        }
+        Matrix2D::from_vec(size, id_grid)
     }
 }
 

@@ -104,77 +104,12 @@ impl FromStr for Board {
     type Err = String;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let mut input = input.lines();
-        let line = input.next().ok_or("Missing first line".to_string())?;
-        let size = Self::parse_size(line)?;
-
-        if size.x <= 0 || size.y <= 0 {
-            return Err("Either row or column size should >= 0".to_string());
-        }
-
-        let mut blocks = HashMap::new();
-        let mut holes = HashSet::new();
-        let mut id_grid = Vec::with_capacity((size.x * size.y) as usize);
-        for (row_i, line) in input.into_iter().take(size.y as usize).enumerate() {
-            let row = line
-                .split_whitespace()
-                .map(|v| {
-                    v.parse::<i8>()
-                        .map_err(|e| format!("Failed to parse block id: {}", e))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            if row.len() != size.x as usize {
-                return Err(format!(
-                    "Invalid line {}: expect {} block, got {}",
-                    row_i,
-                    size.x,
-                    row.len(),
-                ));
-            }
-            for (col_i, id) in row.iter().enumerate() {
-                if id == &0 {
-                    holes.insert(Vec2::new(col_i as i8, row_i as i8));
-                } else {
-                    blocks
-                        .entry(*id)
-                        .or_insert(vec![])
-                        .push(Vec2::new(col_i as i8, row_i as i8));
-                }
-            }
-            id_grid.extend(row);
-        }
-        let id_grid = Matrix2D::from_vec(size, id_grid)?;
-        let blocks = Self::parse_blocks(blocks)?;
-        let (final_state, final_holes) = Self::generate_final_state(size, &blocks)?;
-        let _possible_moves = Self::generate_possible_moves(&holes, &id_grid);
-
-        Ok(Board {
-            blocks,
-            id_grid,
-            holes,
-            _possible_moves,
-            final_hole_positions: final_holes,
-            final_state,
-        })
+        let id_grid = input.parse::<Matrix2D<i8>>()?;
+        Self::try_from(id_grid)
     }
 }
 
 impl Board {
-    fn parse_size(line: &str) -> Result<Vec2, String> {
-        let size = line.split_whitespace().collect::<Vec<_>>();
-        if size.len() != 2 {
-            return Err("First line should be the board row & column size".to_string());
-        }
-        let size = size
-            .into_iter()
-            .map(|s| {
-                s.parse::<i8>()
-                    .map_err(|e| format!("Failed to parse size: {}", e))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Vec2::new(size[1], size[0]))
-    }
-
     fn parse_blocks(blocks: HashMap<i8, Vec<Vec2>>) -> Result<Vec<Block>, String> {
         let mut results = vec![];
         let block_cnt = blocks.len() as i8;
@@ -344,6 +279,44 @@ impl Display for Board {
             writeln!(f, "{:?}", row)?;
         }
         Ok(())
+    }
+}
+
+impl TryFrom<Matrix2D<i8>> for Board {
+    type Error = String;
+
+    fn try_from(id_grid: Matrix2D<i8>) -> Result<Self, Self::Error> {
+        let size = id_grid.size();
+        let mut blocks = HashMap::new();
+        let mut holes = HashSet::new();
+        for row_i in 0..size.y {
+            for col_i in 0..size.x {
+                let pos = Vec2::new(col_i as i8, row_i as i8);
+                let id = id_grid
+                    .get(pos)
+                    .expect("This query should fit inside matrix");
+                if id == &0 {
+                    holes.insert(pos);
+                } else {
+                    blocks
+                        .entry(*id)
+                        .or_insert(vec![])
+                        .push(Vec2::new(col_i as i8, row_i as i8));
+                }
+            }
+        }
+        let blocks = Self::parse_blocks(blocks)?;
+        let (final_state, final_holes) = Self::generate_final_state(size, &blocks)?;
+        let _possible_moves = Self::generate_possible_moves(&holes, &id_grid);
+
+        Ok(Board {
+            blocks,
+            id_grid,
+            holes,
+            _possible_moves,
+            final_hole_positions: final_holes,
+            final_state,
+        })
     }
 }
 
