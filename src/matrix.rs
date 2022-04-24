@@ -150,7 +150,9 @@ where
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut input = input.lines();
-        let line = input.next().ok_or("Missing first line".to_string())?;
+        let line = input
+            .next()
+            .ok_or_else(|| "Missing first line".to_string())?;
         let size = Self::parse_size(line)?;
 
         if size.x <= 0 || size.y <= 0 {

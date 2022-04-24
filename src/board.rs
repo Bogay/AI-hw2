@@ -15,7 +15,7 @@ pub enum Dir {
 }
 
 impl Dir {
-    pub fn to_vec2(&self) -> Vec2 {
+    pub fn to_vec2(self) -> Vec2 {
         match self {
             Dir::Up => Vec2::new(0, -1),
             Dir::Down => Vec2::new(0, 1),
@@ -42,7 +42,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn from_positions(id: i8, positions: &Vec<Vec2>) -> Result<Self, String> {
+    pub fn from_positions(id: i8, positions: &[Vec2]) -> Result<Self, String> {
         match positions.len() {
             1 => Ok(Block {
                 id,
@@ -127,7 +127,7 @@ impl Board {
 
     fn generate_final_state(
         size: Vec2,
-        blocks: &Vec<Block>,
+        blocks: &[Block],
     ) -> Result<(Vec<Vec2>, HashSet<Vec2>), String> {
         let mut grid = Matrix2D::fill(size, 0);
         let mut next_block_id = 0;
@@ -165,7 +165,7 @@ impl Board {
     }
 
     fn generate_possible_moves(holes: &HashSet<Vec2>, id_grid: &Matrix2D<i8>) -> HashSet<Move> {
-        let moves = Self::dir_and_vecs(&vec![Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
+        let moves = Self::dir_and_vecs(&[Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
         let mut possible_moves = HashSet::new();
 
         for hole in holes {
@@ -183,7 +183,7 @@ impl Board {
 
     pub fn move_block(&mut self, id: i8, dir: Dir) -> Result<(), String> {
         self.validate_move(id, dir)?;
-        let moves = Self::dir_and_vecs(&vec![Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
+        let moves = Self::dir_and_vecs(&[Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
         let block = self
             .blocks
             .get_mut((id - 1) as usize)
@@ -248,8 +248,8 @@ impl Board {
         Ok(())
     }
 
-    fn dir_and_vecs(dirs: &Vec<Dir>) -> Vec<(Vec2, Dir)> {
-        dirs.into_iter().map(|d| (d.to_vec2(), *d)).collect()
+    fn dir_and_vecs(dirs: &[Dir]) -> Vec<(Vec2, Dir)> {
+        dirs.iter().map(|d| (d.to_vec2(), *d)).collect()
     }
 
     pub fn is_goal(&self) -> bool {
@@ -265,9 +265,7 @@ impl Board {
     }
 
     pub fn possible_moves(&self) -> Vec<Move> {
-        let result = self._possible_moves.clone().into_iter().collect::<Vec<_>>();
-        // result.sort();
-        result
+        self._possible_moves.clone().into_iter().collect::<Vec<_>>()
     }
 
     /// Get a reference to the board's id grid.
