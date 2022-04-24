@@ -1,5 +1,6 @@
-use crate::board::{Board, Dir, Move};
+use crate::board::{Board, BoardState, Dir, Move};
 use log::{debug, trace};
+use std::collections::BTreeSet;
 
 pub fn iddfs(board: Board) -> Option<Vec<Move>> {
     let mut limit = 1;
@@ -7,7 +8,7 @@ pub fn iddfs(board: Board) -> Option<Vec<Move>> {
     loop {
         debug!("limit: {}", limit);
         let mut board = board.clone();
-        if let Some(mut moves) = dfs(&mut board, limit) {
+        if let Some(mut moves) = dfs(&mut board, limit, &mut Default::default()) {
             moves.reverse();
             return Some(moves);
         }
@@ -15,12 +16,18 @@ pub fn iddfs(board: Board) -> Option<Vec<Move>> {
     }
 }
 
-fn dfs(board: &mut Board, limit: i32) -> Option<Vec<Move>> {
+fn dfs(board: &mut Board, limit: i32, visited: &mut BTreeSet<BoardState>) -> Option<Vec<Move>> {
     if board.is_goal() {
         return Some(vec![]);
     }
     if limit <= 0 {
         return None;
+    }
+    let current_state = board.state();
+    if visited.get(&current_state).is_some() {
+        return None;
+    } else {
+        visited.insert(current_state.clone());
     }
 
     for (id, dir) in board.possible_moves() {
@@ -28,13 +35,14 @@ fn dfs(board: &mut Board, limit: i32) -> Option<Vec<Move>> {
             trace!("{} {:?}", e, (id, dir));
             continue;
         }
-        if let Some(mut moves) = dfs(board, limit - 1) {
+        if let Some(mut moves) = dfs(board, limit - 1, visited) {
             moves.push((id, dir));
             return Some(moves);
         }
         assert!(board.move_block(id, dir.inverse()).is_ok());
     }
 
+    visited.remove(&current_state);
     None
 }
 

@@ -1,6 +1,6 @@
 use std::{fmt::Display, ops::Add};
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Vec2 {
     pub x: i8,
     pub y: i8,

@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::{Debug, Display},
     str::FromStr,
 };
@@ -34,7 +34,7 @@ impl Dir {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Block {
     id: i8,
     pos: Vec2,
@@ -89,15 +89,28 @@ impl Block {
 
 pub type Move = (i8, Dir);
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Board {
-    blocks: Vec<Block>,
     id_grid: Matrix2D<i8>,
-    holes: HashSet<Vec2>,
+    state: BoardState,
+    final_state: BoardState,
     _possible_moves: HashSet<Move>,
-    // Final state cache
-    final_hole_positions: HashSet<Vec2>,
-    final_state: Vec<Vec2>,
+}
+
+// FIXME: The compare only make sense iff they refer to the same board
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct BoardState {
+    holes: BTreeSet<Vec2>,
+    blocks: Vec<Block>,
+}
+
+impl BoardState {
+    pub fn new(holes: Vec<Vec2>, blocks: Vec<Block>) -> Self {
+        Self {
+            holes: BTreeSet::from_iter(holes),
+            blocks,
+        }
+    }
 }
 
 impl FromStr for Board {
@@ -125,14 +138,11 @@ impl Board {
         Ok(results)
     }
 
-    fn generate_final_state(
-        size: Vec2,
-        blocks: &[Block],
-    ) -> Result<(Vec<Vec2>, HashSet<Vec2>), String> {
+    fn generate_final_state(size: Vec2, blocks: &[Block]) -> Result<BoardState, String> {
         let mut grid = Matrix2D::fill(size, 0);
         let mut next_block_id = 0;
-        let mut final_block_positions = Vec::with_capacity(blocks.len());
-        let mut holes = HashSet::new();
+        let mut result_blocks = Vec::with_capacity(blocks.len());
+        let mut holes = vec![];
 
         for i in 0..size.y {
             for j in 0..size.x {
@@ -142,29 +152,37 @@ impl Board {
                         // TODO: return error instead of assert
                         assert_eq!(block.id, (next_block_id + 1) as i8);
                         if grid.try_fill(pos, block.size, block.id).is_ok() {
-                            final_block_positions.push(pos);
+                            result_blocks.push(Block {
+                                id: block.id,
+                                pos,
+                                size: block.size,
+                            });
                             next_block_id += 1;
                         } else {
-                            holes.insert(pos);
+                            holes.push(pos);
                         }
                     } else {
-                        holes.insert(pos);
+                        holes.push(pos);
                     }
                 }
             }
         }
 
-        if blocks.get(next_block_id).is_some() {
+        if result_blocks.get(next_block_id).is_some() {
             return Err(format!(
                 "Cannot fit those blocks into board with size {}x{}",
                 size.y, size.x
             ));
         }
 
-        Ok((final_block_positions, holes))
+        holes.sort();
+        Ok(BoardState::new(holes, result_blocks))
     }
 
-    fn generate_possible_moves(holes: &HashSet<Vec2>, id_grid: &Matrix2D<i8>) -> HashSet<Move> {
+    fn generate_possible_moves(
+        holes: &mut dyn Iterator<Item = &Vec2>,
+        id_grid: &Matrix2D<i8>,
+    ) -> HashSet<Move> {
         let moves = Self::dir_and_vecs(&[Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
         let mut possible_moves = HashSet::new();
 
@@ -185,6 +203,7 @@ impl Board {
         self.validate_move(id, dir)?;
         let moves = Self::dir_and_vecs(&[Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
         let block = self
+            .state
             .blocks
             .get_mut((id - 1) as usize)
             .ok_or_else(|| format!("id {} not found", id))?;
@@ -193,7 +212,7 @@ impl Board {
         for dx in 0..block.size.x {
             for dy in 0..block.size.y {
                 let pos = &block.pos + &Vec2::new(dx, dy);
-                self.holes.insert(pos);
+                self.state.holes.insert(pos);
             }
         }
         block.pos = &block.pos + &dir.to_vec2();
@@ -201,13 +220,13 @@ impl Board {
         for dx in 0..block.size.x {
             for dy in 0..block.size.y {
                 let pos = &block.pos + &Vec2::new(dx, dy);
-                self.holes.remove(&pos);
+                self.state.holes.remove(&pos);
             }
         }
 
         // FIXME: This might be insufficient
         self._possible_moves.clear();
-        for hole in &self.holes {
+        for hole in &self.state.holes {
             for (v, d) in &moves {
                 if let Some(id) = self.id_grid.get(hole + v) {
                     if id != &0 {
@@ -222,6 +241,7 @@ impl Board {
 
     fn validate_move(&self, id: i8, dir: Dir) -> Result<(), String> {
         let block = self
+            .state
             .blocks
             .get((id - 1) as usize)
             .ok_or_else(|| format!("id {} not found", id))?;
@@ -253,15 +273,7 @@ impl Board {
     }
 
     pub fn is_goal(&self) -> bool {
-        if self.holes != self.final_hole_positions {
-            return false;
-        }
-
-        assert_eq!(self.final_state.len(), self.blocks.len());
-        self.final_state
-            .iter()
-            .zip(&self.blocks)
-            .all(|(expect, Block { pos: curr, .. })| curr == expect)
+        self.state == self.final_state
     }
 
     pub fn possible_moves(&self) -> Vec<Move> {
@@ -269,9 +281,13 @@ impl Board {
     }
 
     /// Get a reference to the board's id grid.
-    #[must_use]
     pub fn id_grid(&self) -> &Matrix2D<i8> {
         &self.id_grid
+    }
+
+    /// Get a reference to the board's state.
+    pub fn state(&self) -> BoardState {
+        self.state.clone()
     }
 }
 
@@ -292,7 +308,7 @@ impl TryFrom<Matrix2D<i8>> for Board {
     fn try_from(id_grid: Matrix2D<i8>) -> Result<Self, Self::Error> {
         let size = id_grid.size();
         let mut blocks = HashMap::new();
-        let mut holes = HashSet::new();
+        let mut holes = vec![];
         for row_i in 0..size.y {
             for col_i in 0..size.x {
                 let pos = Vec2::new(col_i as i8, row_i as i8);
@@ -300,7 +316,7 @@ impl TryFrom<Matrix2D<i8>> for Board {
                     .get(pos)
                     .expect("This query should fit inside matrix");
                 if id == &0 {
-                    holes.insert(pos);
+                    holes.push(pos);
                 } else {
                     blocks
                         .entry(*id)
@@ -309,17 +325,17 @@ impl TryFrom<Matrix2D<i8>> for Board {
                 }
             }
         }
+        holes.sort();
         let blocks = Self::parse_blocks(blocks)?;
-        let (final_state, final_holes) = Self::generate_final_state(size, &blocks)?;
-        let _possible_moves = Self::generate_possible_moves(&holes, &id_grid);
+        let state = BoardState::new(holes, blocks);
+        let final_state = Self::generate_final_state(size, &state.blocks)?;
+        let _possible_moves = Self::generate_possible_moves(&mut state.holes.iter(), &id_grid);
 
         Ok(Board {
-            blocks,
             id_grid,
-            holes,
-            _possible_moves,
-            final_hole_positions: final_holes,
+            state,
             final_state,
+            _possible_moves,
         })
     }
 }
@@ -401,10 +417,6 @@ mod tests {
         "
         .parse::<Board>()?;
         assert_eq!(board.final_state, reach_goal_at_init.final_state);
-        assert_eq!(
-            board.final_hole_positions,
-            reach_goal_at_init.final_hole_positions
-        );
         board.move_block(10, Dir::Left)?;
 
         assert!(board.is_goal());
