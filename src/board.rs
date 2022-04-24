@@ -91,13 +91,13 @@ pub type Move = (i8, Dir);
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Board {
-    pub(crate) blocks: Vec<Block>,
-    pub(crate) id_grid: Matrix2D<i8>,
-    pub(crate) holes: HashSet<Vec2>,
-    pub(crate) _possible_moves: HashSet<Move>,
+    blocks: Vec<Block>,
+    id_grid: Matrix2D<i8>,
+    holes: HashSet<Vec2>,
+    _possible_moves: HashSet<Move>,
     // Final state cache
-    pub(crate) final_hole_positions: HashSet<Vec2>,
-    pub(crate) final_state: Vec<Vec2>,
+    final_hole_positions: HashSet<Vec2>,
+    final_state: Vec<Vec2>,
 }
 
 impl FromStr for Board {

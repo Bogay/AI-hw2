@@ -5,10 +5,13 @@ mod vec2;
 
 use board::{Board, Move};
 use clap::{ArgEnum, Parser, Subcommand};
-use log;
+use matrix::Matrix2D;
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use std::fs;
 use std::io::Write;
 use std::time::{Duration, Instant};
+use vec2::Vec2;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
 enum Algorithm {
@@ -20,12 +23,9 @@ enum Algorithm {
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
-struct Args {
+struct Cli {
     #[clap(subcommand)]
     command: Command,
-    /// Output verbose level
-    #[clap(short, long, parse(from_occurrences))]
-    verbose: usize,
 }
 
 #[derive(Subcommand, Debug)]
@@ -41,6 +41,32 @@ enum Command {
         #[clap(arg_enum, short, long, default_value_t = Algorithm::IDDFS)]
         algorithm: Algorithm,
     },
+    Generate {
+        /// Path to the output file, default to stdout
+        #[clap(short, long)]
+        output: Option<String>,
+        /// The output board size
+        #[clap(short, long, parse(try_from_str = vec2_from_str))]
+        size: Vec2,
+        #[clap(short = 'n', long)]
+        block_count: usize,
+    },
+}
+
+fn vec2_from_str(input: &str) -> Result<Vec2, String> {
+    let input = input.split(',').collect::<Vec<_>>();
+
+    if input.len() != 2 {
+        return Err("Input shoud be 2 comma-delimited number. e.g. 4,2".to_string());
+    }
+
+    let x = input[0]
+        .parse::<i8>()
+        .map_err(|e| format!("Cannot parse x: {}", e))?;
+    let y = input[1]
+        .parse::<i8>()
+        .map_err(|e| format!("Cannot parse y: {}", e))?;
+    Ok(Vec2::new(x, y))
 }
 
 fn write_success_result(
@@ -76,20 +102,11 @@ fn write_fail_result(output: &mut dyn Write) -> std::io::Result<()> {
     Ok(())
 }
 
-fn set_log_level(args: &Args) {
-    let log_level = match args.verbose {
-        0 => log::LevelFilter::Info,
-        1 => log::LevelFilter::Debug,
-        2 | _ => log::LevelFilter::Trace,
-    };
-    log::set_max_level(log_level);
-}
-
 fn main() -> std::io::Result<()> {
     let start = Instant::now();
-    let args = Args::parse();
-    set_log_level(&args);
-    match args.command {
+    let cli = Cli::parse();
+    pretty_env_logger::init();
+    match cli.command {
         Command::Search {
             input,
             output,
@@ -98,12 +115,7 @@ fn main() -> std::io::Result<()> {
             let board = fs::read_to_string(input)?
                 .parse::<Board>()
                 .expect("Invalid input file");
-            let output: Box<dyn Write> = match output {
-                Some(output) => Box::new(fs::File::create(output).unwrap()),
-                None => Box::new(std::io::stdout()),
-            };
-            let mut output = std::io::BufWriter::new(output);
-
+            let mut output = get_output(output);
             let moves = match algorithm {
                 Algorithm::IDDFS => search::iddfs(board),
                 Algorithm::IDAStar => todo!(),
@@ -119,7 +131,66 @@ fn main() -> std::io::Result<()> {
                 }
             }
         }
+        Command::Generate {
+            output,
+            size,
+            block_count,
+        } => {
+            // TODO: reuse these code from Board::generate_final_state
+            let mut rng = thread_rng();
+            // Generate IDs to be filled
+            let mut ids = Vec::from_iter(1..=block_count);
+            // ids.shuffle(&mut rng);
+            let mut ids = ids.into_iter();
+            let mut possible_block_sizes = vec![
+                Vec2::new(2, 1),
+                Vec2::new(1, 1),
+                Vec2::new(1, 2),
+                Vec2::new(2, 2),
+            ];
+            let mut grid = Matrix2D::fill(size, 0);
+
+            'fill: for i in 0..size.y {
+                for j in 0..size.x {
+                    let pos = Vec2::new(j, i);
+                    if grid.get(pos).unwrap() == &0 {
+                        possible_block_sizes.shuffle(&mut rng);
+                        if let Some(id) = ids.next() {
+                            for block_size in &possible_block_sizes {
+                                if grid.try_fill(pos, *block_size, id).is_ok() {
+                                    break;
+                                }
+                            }
+                        } else {
+                            break 'fill;
+                        }
+                    }
+                }
+            }
+
+            assert_eq!(ids.next(), None);
+
+            let mut output = get_output(output);
+            writeln!(output, "{} {}", size.y, size.x)?;
+            for row in grid.chunks(size.x as usize) {
+                let row = row
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                writeln!(output, "{}", row)?;
+            }
+        }
     }
 
     Ok(())
+}
+
+fn get_output(output: Option<String>) -> std::io::BufWriter<Box<dyn Write>> {
+    let output: Box<dyn Write> = match output {
+        // FIXME: Handle file creation error
+        Some(output) => Box::new(fs::File::create(output).unwrap()),
+        None => Box::new(std::io::stdout()),
+    };
+    std::io::BufWriter::new(output)
 }
