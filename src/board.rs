@@ -269,6 +269,12 @@ impl Board {
         // result.sort();
         result
     }
+
+    /// Get a reference to the board's id grid.
+    #[must_use]
+    pub fn id_grid(&self) -> &Matrix2D<i8> {
+        &self.id_grid
+    }
 }
 
 impl Display for Board {

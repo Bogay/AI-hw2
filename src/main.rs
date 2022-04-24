@@ -48,8 +48,11 @@ enum Command {
         /// The output board size
         #[clap(short, long, parse(try_from_str = vec2_from_str))]
         size: Vec2,
+        /// At most how many blocks should be generated
         #[clap(short = 'n', long)]
-        block_count: usize,
+        block_count: i8,
+        #[clap(long, default_value_t = 8)]
+        shuffle_round: usize,
     },
 }
 
@@ -135,42 +138,52 @@ fn main() -> std::io::Result<()> {
             output,
             size,
             block_count,
+            shuffle_round,
         } => {
             // TODO: reuse these code from Board::generate_final_state
             let mut rng = thread_rng();
             // Generate IDs to be filled
-            let mut ids = Vec::from_iter(1..=block_count);
-            // ids.shuffle(&mut rng);
-            let mut ids = ids.into_iter();
+            let mut next_id = 1;
             let mut possible_block_sizes = vec![
                 Vec2::new(2, 1),
                 Vec2::new(1, 1),
                 Vec2::new(1, 2),
                 Vec2::new(2, 2),
             ];
-            let mut grid = Matrix2D::fill(size, 0);
+            let mut grid = Matrix2D::fill(size, 0i8);
 
             'fill: for i in 0..size.y {
                 for j in 0..size.x {
                     let pos = Vec2::new(j, i);
                     if grid.get(pos).unwrap() == &0 {
                         possible_block_sizes.shuffle(&mut rng);
-                        if let Some(id) = ids.next() {
-                            for block_size in &possible_block_sizes {
-                                if grid.try_fill(pos, *block_size, id).is_ok() {
-                                    break;
-                                }
+                        let id = next_id;
+                        next_id += 1;
+                        for block_size in &possible_block_sizes {
+                            if grid.try_fill(pos, *block_size, id).is_ok() {
+                                break;
                             }
-                        } else {
+                        }
+                        if next_id > block_count {
                             break 'fill;
                         }
                     }
                 }
             }
+            let mut board: Board = Board::try_from(grid).expect("Invalid input grid");
 
-            assert_eq!(ids.next(), None);
+            let mut rng = thread_rng();
+            for _i in 0..shuffle_round {
+                let possible_moves = board.possible_moves();
+                if let Some((id, dir)) = possible_moves.choose(&mut rng) {
+                    let _ = board.move_block(*id, *dir);
+                } else {
+                    break;
+                }
+            }
 
             let mut output = get_output(output);
+            let grid = board.id_grid();
             writeln!(output, "{} {}", size.y, size.x)?;
             for row in grid.chunks(size.x as usize) {
                 let row = row
