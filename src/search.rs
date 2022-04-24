@@ -7,41 +7,58 @@ pub fn iddfs(board: Board) -> Option<Vec<Move>> {
 
     loop {
         debug!("limit: {}", limit);
-        if let Some(mut moves) = dfs(&mut board.clone(), limit, &mut Default::default()) {
-            moves.reverse();
-            return Some(moves);
+        match dfs(&mut board.clone(), limit, &mut Default::default()) {
+            Ok(mut moves) => {
+                moves.reverse();
+                return Some(moves);
+            }
+            Err(remain_limit) => {
+                if remain_limit > 0 {
+                    return None;
+                }
+            }
         }
         limit += 1;
     }
 }
 
-fn dfs(board: &mut Board, limit: i32, visited: &mut BTreeSet<BoardState>) -> Option<Vec<Move>> {
+fn dfs(
+    board: &mut Board,
+    limit: i32,
+    visited: &mut BTreeSet<BoardState>,
+) -> Result<Vec<Move>, i32> {
     if board.is_goal() {
-        return Some(vec![]);
+        return Ok(vec![]);
     }
     if limit <= 0 {
-        return None;
+        return Err(0);
     }
     if visited.get(board.state()).is_some() {
-        return None;
+        return Err(limit);
     } else {
         visited.insert(board.state().clone());
     }
 
+    let mut remain_limit = limit;
     for (id, dir) in board.possible_moves() {
         if let Err(e) = board.move_block(id, dir) {
             trace!("{} {:?}", e, (id, dir));
             continue;
         }
-        if let Some(mut moves) = dfs(board, limit - 1, visited) {
-            moves.push((id, dir));
-            return Some(moves);
+        match dfs(board, limit - 1, visited) {
+            Ok(mut moves) => {
+                moves.push((id, dir));
+                return Ok(moves);
+            }
+            Err(_remain_limit) => {
+                remain_limit = std::cmp::max(remain_limit, _remain_limit);
+            }
         }
         assert!(board.move_block(id, dir.inverse()).is_ok());
     }
 
     visited.remove(board.state());
-    None
+    Err(remain_limit)
 }
 
 pub fn idastar(board: Board) -> Option<Vec<Move>> {
