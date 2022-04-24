@@ -23,11 +23,10 @@ fn dfs(board: &mut Board, limit: i32, visited: &mut BTreeSet<BoardState>) -> Opt
     if limit <= 0 {
         return None;
     }
-    let current_state = board.state();
-    if visited.get(&current_state).is_some() {
+    if visited.get(board.state()).is_some() {
         return None;
     } else {
-        visited.insert(current_state.clone());
+        visited.insert(board.state().clone());
     }
 
     for (id, dir) in board.possible_moves() {
@@ -42,7 +41,7 @@ fn dfs(board: &mut Board, limit: i32, visited: &mut BTreeSet<BoardState>) -> Opt
         assert!(board.move_block(id, dir.inverse()).is_ok());
     }
 
-    visited.remove(&current_state);
+    visited.remove(board.state());
     None
 }
 

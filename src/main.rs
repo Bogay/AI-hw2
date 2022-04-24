@@ -140,7 +140,6 @@ fn main() -> std::io::Result<()> {
             block_count,
             shuffle_round,
         } => {
-            // TODO: reuse these code from Board::generate_final_state
             let mut rng = thread_rng();
             // Generate IDs to be filled
             let mut next_id = 1;

@@ -286,8 +286,8 @@ impl Board {
     }
 
     /// Get a reference to the board's state.
-    pub fn state(&self) -> BoardState {
-        self.state.clone()
+    pub fn state(&self) -> &BoardState {
+        &self.state
     }
 }
 
