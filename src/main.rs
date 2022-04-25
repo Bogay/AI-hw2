@@ -5,9 +5,6 @@ mod vec2;
 
 use board::{Board, Move};
 use clap::{ArgEnum, Parser, Subcommand};
-use matrix::Matrix2D;
-use rand::prelude::SliceRandom;
-use rand::thread_rng;
 use std::fs;
 use std::io::Write;
 use std::time::{Duration, Instant};
@@ -140,47 +137,7 @@ fn main() -> std::io::Result<()> {
             block_count,
             shuffle_round,
         } => {
-            let mut rng = thread_rng();
-            // Generate IDs to be filled
-            let mut next_id = 1;
-            let mut possible_block_sizes = vec![
-                Vec2::new(2, 1),
-                Vec2::new(1, 1),
-                Vec2::new(1, 2),
-                Vec2::new(2, 2),
-            ];
-            let mut grid = Matrix2D::fill(size, 0i8);
-
-            'fill: for i in 0..size.y {
-                for j in 0..size.x {
-                    let pos = Vec2::new(j, i);
-                    if grid.get(pos).unwrap() == &0 {
-                        possible_block_sizes.shuffle(&mut rng);
-                        let id = next_id;
-                        next_id += 1;
-                        for block_size in &possible_block_sizes {
-                            if grid.try_fill_without_cover(pos, *block_size, id).is_ok() {
-                                break;
-                            }
-                        }
-                        if next_id > block_count {
-                            break 'fill;
-                        }
-                    }
-                }
-            }
-
-            let mut board: Board = Board::try_from(grid).expect("Invalid input grid");
-            // Randomly shuffle board
-            let mut rng = thread_rng();
-            for _i in 0..shuffle_round {
-                let possible_moves = board.possible_moves();
-                if let Some((id, dir)) = possible_moves.choose(&mut rng) {
-                    let _ = board.move_block(*id, *dir);
-                } else {
-                    break;
-                }
-            }
+            let board = Board::generate(size, block_count, shuffle_round);
             // Write to output file
             let mut output = get_output(output);
             let grid = board.id_grid();

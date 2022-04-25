@@ -1,10 +1,11 @@
+use crate::{matrix::Matrix2D, vec2::Vec2};
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fmt::{Debug, Display},
     str::FromStr,
 };
-
-use crate::{matrix::Matrix2D, vec2::Vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Dir {
@@ -299,6 +300,52 @@ impl Board {
                 (curr.pos.x - target.pos.x).abs() as i32 + (curr.pos.y - target.pos.y).abs() as i32
             })
             .sum()
+    }
+
+    /// Randonly generate a valid board
+    pub fn generate(size: Vec2, block_count: i8, shuffle_round: usize) -> Self {
+        let mut next_id = 1;
+        let mut possible_block_sizes = vec![
+            Vec2::new(2, 1),
+            Vec2::new(1, 1),
+            Vec2::new(1, 2),
+            Vec2::new(2, 2),
+        ];
+        let mut grid = Matrix2D::fill(size, 0i8);
+        let mut rng = thread_rng();
+
+        'fill: for i in 0..size.y {
+            for j in 0..size.x {
+                let pos = Vec2::new(j, i);
+                if grid.get(pos).unwrap() == &0 {
+                    possible_block_sizes.shuffle(&mut rng);
+                    let id = next_id;
+                    next_id += 1;
+                    for block_size in &possible_block_sizes {
+                        if grid.try_fill_without_cover(pos, *block_size, id).is_ok() {
+                            break;
+                        }
+                    }
+                    if next_id > block_count {
+                        break 'fill;
+                    }
+                }
+            }
+        }
+
+        let mut board: Board = Board::try_from(grid).expect("Invalid input grid");
+        // Randomly shuffle board
+        let mut rng = thread_rng();
+        for _i in 0..shuffle_round {
+            let possible_moves = board.possible_moves();
+            if let Some((id, dir)) = possible_moves.choose(&mut rng) {
+                let _ = board.move_block(*id, *dir);
+            } else {
+                break;
+            }
+        }
+
+        board
     }
 }
 
