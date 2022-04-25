@@ -1,14 +1,10 @@
-mod board;
-mod matrix;
 mod search;
-mod vec2;
 
-use board::{Board, Move};
 use clap::{ArgEnum, Parser, Subcommand};
+use sliding_puzzle_core::{Board, Dir, Move, Vec2};
 use std::fs;
 use std::io::Write;
 use std::time::{Duration, Instant};
-use vec2::Vec2;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
 enum Algorithm {
@@ -84,10 +80,10 @@ fn write_success_result(
         .into_iter()
         .map(|(id, dir)| {
             let dir = match dir {
-                board::Dir::Up => 'U',
-                board::Dir::Down => 'D',
-                board::Dir::Left => 'L',
-                board::Dir::Right => 'R',
+                Dir::Up => 'U',
+                Dir::Down => 'D',
+                Dir::Left => 'L',
+                Dir::Right => 'R',
             };
             format!("{}{} ", id, dir)
         })

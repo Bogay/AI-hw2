@@ -1,5 +1,5 @@
-use crate::board::{Board, BoardState, Dir, Move};
 use log::{debug, trace};
+use sliding_puzzle_core::{Board, BoardState, Dir, Move};
 use std::collections::BTreeSet;
 
 pub fn iddfs(board: Board) -> Option<Vec<Move>> {
