@@ -1,7 +1,6 @@
-mod search;
-
 use clap::{ArgEnum, Parser, Subcommand};
 use sliding_puzzle_core::{Board, Dir, Move, Vec2};
+use sliding_puzzle_search::search;
 use std::fs;
 use std::io::Write;
 use std::time::{Duration, Instant};

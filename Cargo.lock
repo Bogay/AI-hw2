@@ -290,6 +290,7 @@ dependencies = [
  "pretty_env_logger",
  "rand",
  "sliding-puzzle-core",
+ "sliding-puzzle-search",
 ]
 
 [[package]]
@@ -297,6 +298,15 @@ name = "sliding-puzzle-core"
 version = "0.1.0"
 dependencies = [
  "rand",
+]
+
+[[package]]
+name = "sliding-puzzle-search"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "pretty_env_logger",
+ "sliding-puzzle-core",
 ]
 
 [[package]]
