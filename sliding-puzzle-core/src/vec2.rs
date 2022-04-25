@@ -1,5 +1,6 @@
 use std::{fmt::Display, ops::Add};
 
+/// A (x, y) vector
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Vec2 {
     pub x: i8,

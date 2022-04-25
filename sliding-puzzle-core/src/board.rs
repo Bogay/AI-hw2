@@ -7,6 +7,7 @@ use std::{
     str::FromStr,
 };
 
+/// Direction on the board
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Dir {
     Up,
@@ -16,6 +17,7 @@ pub enum Dir {
 }
 
 impl Dir {
+    /// Convert direction to corresponding vector
     pub fn to_vec2(self) -> Vec2 {
         match self {
             Dir::Up => Vec2::new(0, -1),
@@ -25,6 +27,7 @@ impl Dir {
         }
     }
 
+    /// Get inverse direction
     pub fn inverse(&self) -> Self {
         match self {
             Dir::Up => Dir::Down,
@@ -35,14 +38,19 @@ impl Dir {
     }
 }
 
+/// Block on board
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Block {
+    /// Block's id, should be unique
     id: i8,
+    /// Position of block, which is the top-left cell's position here
     pos: Vec2,
+    /// Width & height og this block
     size: Vec2,
 }
 
 impl Block {
+    /// Build block from positions, note that positions must be sorted in row majoring order
     pub fn from_positions(id: i8, positions: &[Vec2]) -> Result<Self, String> {
         match positions.len() {
             1 => Ok(Block {
@@ -88,20 +96,28 @@ impl Block {
     }
 }
 
+/// Represente a move of a board
 pub type Move = (i8, Dir);
 
+/// Board of sliding puzzle
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Board {
-    id_grid: Matrix2D<i8>,
+    /// Grid to store cells are occupied by which id
+    grid: Matrix2D<i8>,
+    /// Current state of board
     state: BoardState,
+    /// The final state this board want to reach
     final_state: BoardState,
     _possible_moves: HashSet<Move>,
 }
 
 // FIXME: The compare only make sense iff they refer to the same board
+/// Board state, store all block data
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BoardState {
+    /// Positions of empty cells
     holes: BTreeSet<Vec2>,
+    /// Blocks of this board, should be sorted by id and blank id is not allowed
     blocks: Vec<Block>,
 }
 
@@ -124,6 +140,7 @@ impl FromStr for Board {
 }
 
 impl Board {
+    /// Convert positions to blocks
     fn parse_blocks(blocks: HashMap<i8, Vec<Vec2>>) -> Result<Vec<Block>, String> {
         let mut results = vec![];
         let block_cnt = blocks.len() as i8;
@@ -139,6 +156,7 @@ impl Board {
         Ok(results)
     }
 
+    /// Generate the final state from board size & blocks
     fn generate_final_state(size: Vec2, blocks: &[Block]) -> Result<BoardState, String> {
         let mut grid = Matrix2D::fill(size, 0);
         let mut next_block_id = 0;
@@ -201,15 +219,14 @@ impl Board {
     }
 
     pub fn move_block(&mut self, id: i8, dir: Dir) -> Result<(), String> {
-        self.validate_move(id, dir)?;
-        let moves = Self::dir_and_vecs(&[Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
+        self.is_valid_move((id, dir))?;
         let block = self
             .state
             .blocks
             .get_mut((id - 1) as usize)
             .ok_or_else(|| format!("id {} not found", id))?;
         assert_eq!(id, block.id);
-        self.id_grid.try_fill(block.pos, block.size, 0)?;
+        self.grid.try_fill(block.pos, block.size, 0)?;
         for dx in 0..block.size.x {
             for dy in 0..block.size.y {
                 let pos = &block.pos + &Vec2::new(dx, dy);
@@ -217,7 +234,7 @@ impl Board {
             }
         }
         block.pos = &block.pos + &dir.to_vec2();
-        self.id_grid.try_fill(block.pos, block.size, block.id)?;
+        self.grid.try_fill(block.pos, block.size, block.id)?;
         for dx in 0..block.size.x {
             for dy in 0..block.size.y {
                 let pos = &block.pos + &Vec2::new(dx, dy);
@@ -226,21 +243,14 @@ impl Board {
         }
 
         // FIXME: This might be insufficient
-        self._possible_moves.clear();
-        for hole in &self.state.holes {
-            for (v, d) in &moves {
-                if let Some(id) = self.id_grid.get(hole + v) {
-                    if id != &0 {
-                        self._possible_moves.insert((*id, d.inverse()));
-                    }
-                }
-            }
-        }
+        self._possible_moves =
+            Self::generate_possible_moves(&mut self.state.holes.iter(), &self.grid);
 
         Ok(())
     }
 
-    fn validate_move(&self, id: i8, dir: Dir) -> Result<(), String> {
+    /// Check whether a move is valid
+    fn is_valid_move(&self, (id, dir): Move) -> Result<(), String> {
         let block = self
             .state
             .blocks
@@ -253,7 +263,7 @@ impl Board {
             for dy in 0..block.size.y {
                 let before_move = &block.pos + &Vec2::new(dx, dy);
                 let after_move = &before_move + &move_vec;
-                if let Some(next_id) = self.id_grid.get(after_move) {
+                if let Some(next_id) = self.grid.get(after_move) {
                     if next_id != &0 && next_id != &id {
                         return Err(format!(
                             "Invalid move, {} has occupied by {}",
@@ -277,13 +287,14 @@ impl Board {
         self.state == self.final_state
     }
 
+    /// Get possible moves from current state
     pub fn possible_moves(&self) -> Vec<Move> {
         self._possible_moves.clone().into_iter().collect::<Vec<_>>()
     }
 
     /// Get a reference to the board's id grid.
-    pub fn id_grid(&self) -> &Matrix2D<i8> {
-        &self.id_grid
+    pub fn grid(&self) -> &Matrix2D<i8> {
+        &self.grid
     }
 
     /// Get a reference to the board's state.
@@ -351,9 +362,9 @@ impl Board {
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let size = self.id_grid.size();
+        let size = self.grid.size();
         writeln!(f, "{} {}", size.x, size.y)?;
-        for row in self.id_grid.chunks(size.x as usize) {
+        for row in self.grid.chunks(size.x as usize) {
             writeln!(f, "{:?}", row)?;
         }
         Ok(())
@@ -363,16 +374,15 @@ impl Display for Board {
 impl TryFrom<Matrix2D<i8>> for Board {
     type Error = String;
 
-    fn try_from(id_grid: Matrix2D<i8>) -> Result<Self, Self::Error> {
-        let size = id_grid.size();
+    fn try_from(grid: Matrix2D<i8>) -> Result<Self, Self::Error> {
+        let size = grid.size();
+        // Parse holes & blocks
         let mut blocks = HashMap::new();
         let mut holes = vec![];
         for row_i in 0..size.y {
             for col_i in 0..size.x {
                 let pos = Vec2::new(col_i as i8, row_i as i8);
-                let id = id_grid
-                    .get(pos)
-                    .expect("This query should fit inside matrix");
+                let id = grid.get(pos).expect("This query should fit inside matrix");
                 if id == &0 {
                     holes.push(pos);
                 } else {
@@ -387,10 +397,10 @@ impl TryFrom<Matrix2D<i8>> for Board {
         let blocks = Self::parse_blocks(blocks)?;
         let state = BoardState::new(holes, blocks);
         let final_state = Self::generate_final_state(size, &state.blocks)?;
-        let _possible_moves = Self::generate_possible_moves(&mut state.holes.iter(), &id_grid);
+        let _possible_moves = Self::generate_possible_moves(&mut state.holes.iter(), &grid);
 
         Ok(Board {
-            id_grid,
+            grid,
             state,
             final_state,
             _possible_moves,
@@ -422,7 +432,7 @@ mod tests {
         "
         .parse::<Board>()?;
 
-        assert_eq!(before_move.id_grid, after_move.id_grid);
+        assert_eq!(before_move.grid, after_move.grid);
 
         Ok(())
     }

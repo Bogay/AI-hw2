@@ -12,3 +12,10 @@ rand = "0.8"
 pretty_env_logger = "0.4"
 sliding-puzzle-core = { path = "./sliding-puzzle-core" }
 sliding-puzzle-search = { path = "./sliding-puzzle-search" }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "my_benchmark"
+harness = false

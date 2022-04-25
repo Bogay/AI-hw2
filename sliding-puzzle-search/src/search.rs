@@ -2,6 +2,7 @@ use log::{debug, trace};
 use sliding_puzzle_core::{Board, BoardState, Dir, Move};
 use std::collections::BTreeSet;
 
+/// IDDFS
 pub fn iddfs(board: Board) -> Option<Vec<Move>> {
     let mut limit = 1;
 
@@ -51,7 +52,7 @@ fn dfs(
                 return Ok(moves);
             }
             Err(_remain_limit) => {
-                remain_limit = std::cmp::max(remain_limit, _remain_limit);
+                remain_limit = std::cmp::min(remain_limit, _remain_limit);
             }
         }
         assert!(board.move_block(id, dir.inverse()).is_ok());
@@ -61,6 +62,7 @@ fn dfs(
     Err(remain_limit)
 }
 
+/// IDA*
 pub fn idastar(board: Board) -> Option<Vec<Move>> {
     let mut f_limit = board.heuristic();
     loop {

@@ -1,10 +1,9 @@
+use crate::vec2::Vec2;
 use std::{
     fmt::Debug,
     ops::{Deref, DerefMut},
     str::FromStr,
 };
-
-use crate::vec2::Vec2;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Matrix2D<T> {
@@ -16,13 +15,15 @@ impl<T> Matrix2D<T>
 where
     T: Clone,
 {
-    pub fn fill(size: Vec2, fillin_value: T) -> Self {
+    /// Create a matrix filled with given value
+    pub fn fill(size: Vec2, value: T) -> Self {
         Self {
             size,
-            store: vec![fillin_value; size.x as usize * size.y as usize],
+            store: vec![value; size.x as usize * size.y as usize],
         }
     }
 
+    /// Try fill given area with given value, return error if the area is out of range
     pub fn try_fill(&mut self, anchor: Vec2, size: Vec2, value: T) -> Result<(), String> {
         for dy in 0..size.y {
             for dx in 0..size.x {
@@ -46,6 +47,7 @@ impl<T> Matrix2D<T>
 where
     T: Clone + Default + PartialEq,
 {
+    /// Try fill a given area without overwrite cells have already had default value
     pub fn try_fill_without_cover(
         &mut self,
         anchor: Vec2,
@@ -80,10 +82,12 @@ impl<T> Matrix2D<T> {
         self.size
     }
 
+    /// Check whether the position is inside matrix
     fn is_inside(&self, pos: &Vec2) -> bool {
         pos.x >= 0 && pos.x < self.size.x && pos.y >= 0 && pos.y < self.size.y
     }
 
+    /// Get a immutable reference of cell
     pub fn get(&self, pos: Vec2) -> Option<&T> {
         if !self.is_inside(&pos) {
             return None;
@@ -92,6 +96,7 @@ impl<T> Matrix2D<T> {
             .get(pos.y as usize * self.size.x as usize + pos.x as usize)
     }
 
+    /// Get a mutable reference of cell
     pub fn get_mut(&mut self, pos: Vec2) -> Option<&mut T> {
         if !self.is_inside(&pos) {
             return None;
@@ -100,6 +105,7 @@ impl<T> Matrix2D<T> {
             .get_mut(pos.y as usize * self.size.x as usize + pos.x as usize)
     }
 
+    /// Create matrix from given vector
     pub fn from_vec(size: Vec2, vec: Vec<T>) -> Result<Self, String> {
         let expect_size = size.x as usize * size.y as usize;
         if expect_size != vec.len() {
