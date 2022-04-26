@@ -1,21 +1,6 @@
-[package]
-name = "silding-puzzle"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-clap = { version = "3.1.6", features = ["derive"] }
-log = "0.4"
-rand = "0.8"
-pretty_env_logger = "0.4"
-sliding-puzzle-core = { path = "./sliding-puzzle-core" }
-sliding-puzzle-search = { path = "./sliding-puzzle-search" }
-
-[dev-dependencies]
-criterion = "0.3"
-
-[[bench]]
-name = "my_benchmark"
-harness = false
+[workspace]
+members = [
+    "sliding-puzzle",
+    "sliding-puzzle-core",
+    "sliding-puzzle-search",
+]
