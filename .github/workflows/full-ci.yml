@@ -20,7 +20,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - uses: dtolnay/rust-toolchain@nightly
-      name: Build doc
+    - name: Build doc
       run: cargo +nightly doc --no-deps --workspace
       env:
         RUSTDOCFLAGS: '--enable-index-page -Zunstable-options'
