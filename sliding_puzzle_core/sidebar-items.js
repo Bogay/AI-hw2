@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Dir","Direction on the board"]],"struct":[["Block","Block on board"],["Board","Board of sliding puzzle"],["BoardState","Board state, store all block data"],["Matrix2D",""],["Vec2","A (x, y) vector"]],"type":[["Move","Represente a move of a board"]]});
+initSidebarItems({"enum":[["Dir","Direction on the board"]],"struct":[["Board","Board of sliding puzzle"],["BoardState","Board state, store all block data"],["Matrix2D",""],["Vec2","A (x, y) vector"]],"type":[["Move","Represente a move of a board"]]});

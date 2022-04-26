@@ -569,9 +569,6 @@
 <span id="564">564</span>
 <span id="565">565</span>
 <span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">matrix::Matrix2D</span>, <span class="ident">vec2::Vec2</span>};
 <span class="kw">use</span> <span class="ident">rand::prelude::SliceRandom</span>;
 <span class="kw">use</span> <span class="ident">rand::thread_rng</span>;
@@ -614,7 +611,7 @@
 
 <span class="doccomment">/// Block on board</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Block</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Block</span> {
     <span class="doccomment">/// Block&#39;s id, should be unique</span>
     <span class="ident">id</span>: <span class="ident">i8</span>,
     <span class="doccomment">/// Position of block, which is the top-left cell&#39;s position here</span>
@@ -685,10 +682,11 @@
     <span class="ident">_possible_moves</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Move</span><span class="op">&gt;</span>,
 }
 
-<span class="comment">// FIXME: The compare only make sense iff they refer to the same board</span>
 <span class="doccomment">/// Board state, store all block data</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BoardState</span> {
+    <span class="doccomment">/// Size of the board</span>
+    <span class="ident">size</span>: <span class="ident">Vec2</span>,
     <span class="doccomment">/// Positions of empty cells</span>
     <span class="ident">holes</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Vec2</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Blocks of this board, should be sorted by id and blank id is not allowed</span>
@@ -696,8 +694,9 @@
 }
 
 <span class="kw">impl</span> <span class="ident">BoardState</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">holes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec2</span><span class="op">&gt;</span>, <span class="ident">blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">size</span>: <span class="ident">Vec2</span>, <span class="ident">holes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec2</span><span class="op">&gt;</span>, <span class="ident">blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
+            <span class="ident">size</span>,
             <span class="ident">holes</span>: <span class="ident">BTreeSet::from_iter</span>(<span class="ident">holes</span>),
             <span class="ident">blocks</span>,
         }
@@ -769,7 +768,7 @@
         }
 
         <span class="ident">holes</span>.<span class="ident">sort</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">BoardState::new</span>(<span class="ident">holes</span>, <span class="ident">result_blocks</span>))
+        <span class="prelude-val">Ok</span>(<span class="ident">BoardState::new</span>(<span class="ident">size</span>, <span class="ident">holes</span>, <span class="ident">result_blocks</span>))
     }
 
     <span class="kw">fn</span> <span class="ident">generate_possible_moves</span>(
@@ -864,11 +863,6 @@
     <span class="doccomment">/// Get possible moves from current state</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">possible_moves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Move</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">_possible_moves</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-    }
-
-    <span class="doccomment">/// Get a reference to the board&#39;s id grid.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">grid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Matrix2D</span><span class="op">&lt;</span><span class="ident">i8</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">grid</span>
     }
 
     <span class="doccomment">/// Get a reference to the board&#39;s state.</span>
@@ -974,7 +968,7 @@
         }
         <span class="ident">holes</span>.<span class="ident">sort</span>();
         <span class="kw">let</span> <span class="ident">blocks</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::parse_blocks</span>(<span class="ident">blocks</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">BoardState::new</span>(<span class="ident">holes</span>, <span class="ident">blocks</span>);
+        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">BoardState::new</span>(<span class="ident">size</span>, <span class="ident">holes</span>, <span class="ident">blocks</span>);
         <span class="kw">let</span> <span class="ident">final_state</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::generate_final_state</span>(<span class="ident">size</span>, <span class="kw-2">&amp;</span><span class="ident">state</span>.<span class="ident">blocks</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">_possible_moves</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::generate_possible_moves</span>(<span class="kw-2">&amp;mut</span> <span class="ident">state</span>.<span class="ident">holes</span>.<span class="ident">iter</span>(), <span class="kw-2">&amp;</span><span class="ident">grid</span>);
 
