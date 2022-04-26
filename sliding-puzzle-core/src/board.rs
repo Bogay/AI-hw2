@@ -365,7 +365,12 @@ impl Display for Board {
         let size = self.grid.size();
         writeln!(f, "{} {}", size.x, size.y)?;
         for row in self.grid.chunks(size.x as usize) {
-            writeln!(f, "{:?}", row)?;
+            let row = row
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
+            writeln!(f, "{}", row)?;
         }
         Ok(())
     }
