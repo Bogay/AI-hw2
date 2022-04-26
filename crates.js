@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["sliding_puzzle","sliding_puzzle_core","sliding_puzzle_search"];

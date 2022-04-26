@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sliding_puzzle"] = [{"text":"impl Subcommand for <a class=\"enum\" href=\"sliding_puzzle/enum.Command.html\" title=\"enum sliding_puzzle::Command\">Command</a>","synthetic":false,"types":["sliding_puzzle::Command"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

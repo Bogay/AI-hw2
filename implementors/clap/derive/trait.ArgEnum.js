@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sliding_puzzle"] = [{"text":"impl ArgEnum for <a class=\"enum\" href=\"sliding_puzzle/search/enum.Algorithm.html\" title=\"enum sliding_puzzle::search::Algorithm\">Algorithm</a>","synthetic":false,"types":["sliding_puzzle::search::Algorithm"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sliding_puzzle_core"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html\" title=\"trait core::ops::arith::Add\">Add</a>&lt;&amp;'_ <a class=\"struct\" href=\"sliding_puzzle_core/struct.Vec2.html\" title=\"struct sliding_puzzle_core::Vec2\">Vec2</a>&gt; for &amp;<a class=\"struct\" href=\"sliding_puzzle_core/struct.Vec2.html\" title=\"struct sliding_puzzle_core::Vec2\">Vec2</a>","synthetic":false,"types":["sliding_puzzle_core::vec2::Vec2"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
