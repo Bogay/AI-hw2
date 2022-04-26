@@ -40,7 +40,7 @@ impl Dir {
 
 /// Block on board
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Block {
+pub(crate) struct Block {
     /// Block's id, should be unique
     id: i8,
     /// Position of block, which is the top-left cell's position here
@@ -111,10 +111,11 @@ pub struct Board {
     _possible_moves: HashSet<Move>,
 }
 
-// FIXME: The compare only make sense iff they refer to the same board
 /// Board state, store all block data
-#[derive(Debug, Default, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BoardState {
+    /// Size of the board
+    size: Vec2,
     /// Positions of empty cells
     holes: BTreeSet<Vec2>,
     /// Blocks of this board, should be sorted by id and blank id is not allowed
@@ -122,8 +123,9 @@ pub struct BoardState {
 }
 
 impl BoardState {
-    pub fn new(holes: Vec<Vec2>, blocks: Vec<Block>) -> Self {
+    pub(crate) fn new(size: Vec2, holes: Vec<Vec2>, blocks: Vec<Block>) -> Self {
         Self {
+            size,
             holes: BTreeSet::from_iter(holes),
             blocks,
         }
@@ -195,7 +197,7 @@ impl Board {
         }
 
         holes.sort();
-        Ok(BoardState::new(holes, result_blocks))
+        Ok(BoardState::new(size, holes, result_blocks))
     }
 
     fn generate_possible_moves(
@@ -290,11 +292,6 @@ impl Board {
     /// Get possible moves from current state
     pub fn possible_moves(&self) -> Vec<Move> {
         self._possible_moves.clone().into_iter().collect::<Vec<_>>()
-    }
-
-    /// Get a reference to the board's id grid.
-    pub fn grid(&self) -> &Matrix2D<i8> {
-        &self.grid
     }
 
     /// Get a reference to the board's state.
@@ -400,7 +397,7 @@ impl TryFrom<Matrix2D<i8>> for Board {
         }
         holes.sort();
         let blocks = Self::parse_blocks(blocks)?;
-        let state = BoardState::new(holes, blocks);
+        let state = BoardState::new(size, holes, blocks);
         let final_state = Self::generate_final_state(size, &state.blocks)?;
         let _possible_moves = Self::generate_possible_moves(&mut state.holes.iter(), &grid);
 
