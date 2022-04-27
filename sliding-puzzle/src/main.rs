@@ -3,13 +3,13 @@ mod util;
 
 use clap::{Parser, Subcommand};
 use sliding_puzzle_core::{Board, Dir, Move, Vec2};
-use std::fs;
-use std::io::Write;
-use std::time::{Duration, Instant};
+use std::{
+    fs,
+    io::{BufWriter, Write},
+    time::{Duration, Instant},
+};
 
 // Use jemalloc as allocator
-#[cfg(not(target_env = "msvc"))]
-use tikv_jemalloc_sys;
 #[cfg(not(target_env = "msvc"))]
 use tikv_jemallocator::Jemalloc;
 #[cfg(not(target_env = "msvc"))]
@@ -100,12 +100,12 @@ fn write_fail_result(output: &mut dyn Write) -> std::io::Result<()> {
 }
 
 /// Get output from given path. If not, use stdout
-fn get_output(output: Option<String>) -> std::io::Result<std::io::BufWriter<Box<dyn Write>>> {
+fn get_output(output: Option<String>) -> std::io::Result<BufWriter<Box<dyn Write>>> {
     let output: Box<dyn Write> = match output {
         Some(output) => Box::new(fs::File::create(output)?),
         None => Box::new(std::io::stdout()),
     };
-    Ok(std::io::BufWriter::new(output))
+    Ok(BufWriter::new(output))
 }
 
 fn main() -> std::io::Result<()> {

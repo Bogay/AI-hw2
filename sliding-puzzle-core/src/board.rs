@@ -2,8 +2,7 @@ use crate::{
     matrix::Matrix2D,
     vec2::{Square, Vec2},
 };
-use rand::prelude::SliceRandom;
-use rand::thread_rng;
+use rand::{prelude::SliceRandom, thread_rng};
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display},
@@ -195,10 +194,7 @@ impl Board {
         Ok(BoardState::new(size, result_blocks))
     }
 
-    fn generate_possible_moves(
-        holes: &mut dyn Iterator<Item = &Vec2>,
-        id_grid: &Matrix2D<i8>,
-    ) -> HashSet<Move> {
+    fn generate_possible_moves(holes: &HashSet<Vec2>, id_grid: &Matrix2D<i8>) -> HashSet<Move> {
         let moves = Self::dir_and_vecs(&[Dir::Up, Dir::Down, Dir::Left, Dir::Right]);
         let mut possible_moves = HashSet::new();
 
@@ -232,7 +228,7 @@ impl Board {
             self.holes.remove(&pos);
         }
         // FIXME: This might be insufficient
-        self._possible_moves = Self::generate_possible_moves(&mut self.holes.iter(), &self.grid);
+        self._possible_moves = Self::generate_possible_moves(&self.holes, &self.grid);
 
         Ok(())
     }
@@ -360,11 +356,11 @@ impl TryFrom<Matrix2D<i8>> for Board {
         let size = grid.size();
         // Parse holes & blocks
         let mut blocks = HashMap::new();
-        let mut holes = vec![];
+        let mut holes = HashSet::new();
         for pos in Square::at_origin(size).row_iter() {
             let id = grid.get(pos).expect("This query should fit inside matrix");
             if id == &0 {
-                holes.push(pos);
+                holes.insert(pos);
             } else {
                 blocks.entry(*id).or_insert(vec![]).push(pos);
             }
@@ -372,14 +368,14 @@ impl TryFrom<Matrix2D<i8>> for Board {
         let blocks = Self::parse_blocks(blocks)?;
         let state = BoardState::new(size, blocks);
         let final_state = Self::generate_final_state(size, &state.blocks)?;
-        let _possible_moves = Self::generate_possible_moves(&mut holes.iter(), &grid);
+        let _possible_moves = Self::generate_possible_moves(&holes, &grid);
 
         Ok(Board {
             grid,
             state,
             final_state,
             _possible_moves,
-            holes: holes.into_iter().collect(),
+            holes,
         })
     }
 }
