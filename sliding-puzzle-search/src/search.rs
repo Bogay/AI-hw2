@@ -1,6 +1,6 @@
 use log::{debug, trace};
 use sliding_puzzle_core::{Board, BoardState, Dir, Move};
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 
 /// IDDFS
 pub fn iddfs(board: Board) -> Option<Vec<Move>> {
@@ -23,11 +23,7 @@ pub fn iddfs(board: Board) -> Option<Vec<Move>> {
     }
 }
 
-fn dfs(
-    board: &mut Board,
-    limit: i32,
-    visited: &mut BTreeSet<BoardState>,
-) -> Result<Vec<Move>, i32> {
+fn dfs(board: &mut Board, limit: i32, visited: &mut HashSet<BoardState>) -> Result<Vec<Move>, i32> {
     if board.is_goal() {
         return Ok(vec![]);
     }
@@ -86,7 +82,7 @@ fn _idastar(
     board: &mut Board,
     g_value: i32,
     mut f_limit: i32,
-    visited: &mut BTreeSet<BoardState>,
+    visited: &mut HashSet<BoardState>,
 ) -> Result<Vec<Move>, i32> {
     if board.is_goal() {
         return Ok(vec![]);

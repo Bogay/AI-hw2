@@ -2,7 +2,7 @@ use crate::{matrix::Matrix2D, vec2::Vec2};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     fmt::{Debug, Display},
     str::FromStr,
 };
@@ -109,26 +109,21 @@ pub struct Board {
     /// The final state this board want to reach
     final_state: BoardState,
     _possible_moves: HashSet<Move>,
+    holes: HashSet<Vec2>,
 }
 
 /// Board state, store all block data
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BoardState {
     /// Size of the board
     size: Vec2,
-    /// Positions of empty cells
-    holes: BTreeSet<Vec2>,
     /// Blocks of this board, should be sorted by id and blank id is not allowed
     blocks: Vec<Block>,
 }
 
 impl BoardState {
-    pub(crate) fn new(size: Vec2, holes: Vec<Vec2>, blocks: Vec<Block>) -> Self {
-        Self {
-            size,
-            holes: BTreeSet::from_iter(holes),
-            blocks,
-        }
+    pub(crate) fn new(size: Vec2, blocks: Vec<Block>) -> Self {
+        Self { size, blocks }
     }
 }
 
@@ -197,7 +192,7 @@ impl Board {
         }
 
         holes.sort();
-        Ok(BoardState::new(size, holes, result_blocks))
+        Ok(BoardState::new(size, result_blocks))
     }
 
     fn generate_possible_moves(
@@ -232,7 +227,7 @@ impl Board {
         for dx in 0..block.size.x {
             for dy in 0..block.size.y {
                 let pos = &block.pos + &Vec2::new(dx, dy);
-                self.state.holes.insert(pos);
+                self.holes.insert(pos);
             }
         }
         block.pos = &block.pos + &dir.to_vec2();
@@ -240,13 +235,12 @@ impl Board {
         for dx in 0..block.size.x {
             for dy in 0..block.size.y {
                 let pos = &block.pos + &Vec2::new(dx, dy);
-                self.state.holes.remove(&pos);
+                self.holes.remove(&pos);
             }
         }
 
         // FIXME: This might be insufficient
-        self._possible_moves =
-            Self::generate_possible_moves(&mut self.state.holes.iter(), &self.grid);
+        self._possible_moves = Self::generate_possible_moves(&mut self.holes.iter(), &self.grid);
 
         Ok(())
     }
@@ -395,17 +389,17 @@ impl TryFrom<Matrix2D<i8>> for Board {
                 }
             }
         }
-        holes.sort();
         let blocks = Self::parse_blocks(blocks)?;
-        let state = BoardState::new(size, holes, blocks);
+        let state = BoardState::new(size, blocks);
         let final_state = Self::generate_final_state(size, &state.blocks)?;
-        let _possible_moves = Self::generate_possible_moves(&mut state.holes.iter(), &grid);
+        let _possible_moves = Self::generate_possible_moves(&mut holes.iter(), &grid);
 
         Ok(Board {
             grid,
             state,
             final_state,
             _possible_moves,
+            holes: holes.into_iter().collect(),
         })
     }
 }
