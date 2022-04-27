@@ -7,12 +7,25 @@ use std::fs;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
-/// CLI entry
+// Use jemalloc as allocator
+#[cfg(not(target_env = "msvc"))]
+use tikv_jemalloc_sys;
+#[cfg(not(target_env = "msvc"))]
+use tikv_jemallocator::Jemalloc;
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
+/// Sliding puzzle CLI entry
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
     #[clap(subcommand)]
     command: Command,
+    #[cfg(not(target_env = "msvc"))]
+    /// Print malloc statistic after execution
+    #[clap(long)]
+    print_malloc_stats: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -44,6 +57,13 @@ enum Command {
         #[clap(long, default_value_t = 8)]
         shuffle_round: usize,
     },
+}
+
+fn print_malloc_stats() {
+    unsafe {
+        use std::ptr::{null, null_mut};
+        tikv_jemalloc_sys::malloc_stats_print(None, null_mut(), null());
+    }
 }
 
 fn write_success_result(
@@ -123,6 +143,10 @@ fn main() -> std::io::Result<()> {
             let mut output = get_output(output)?;
             writeln!(output, "{}", board)?;
         }
+    }
+
+    if cli.print_malloc_stats {
+        print_malloc_stats();
     }
 
     Ok(())

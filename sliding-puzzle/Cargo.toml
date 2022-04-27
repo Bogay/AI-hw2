@@ -12,6 +12,9 @@ rand = "0.8"
 pretty_env_logger = "0.4"
 sliding-puzzle-core = { path = "../sliding-puzzle-core" }
 sliding-puzzle-search = { path = "../sliding-puzzle-search" }
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemalloc-sys = "0.4.0"
+tikv-jemallocator = { version = "0.4.0", features = ["stats", "profiling", "unprefixed_malloc_on_supported_platforms"] }
 
 [dev-dependencies]
 criterion = "0.3"

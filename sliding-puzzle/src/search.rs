@@ -1,4 +1,4 @@
-use clap::{ArgEnum, Parser, Subcommand};
+use clap::ArgEnum;
 use sliding_puzzle_core::{Board, Move};
 use sliding_puzzle_search::search;
 
