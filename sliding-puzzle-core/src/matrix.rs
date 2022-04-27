@@ -1,4 +1,4 @@
-use crate::vec2::Vec2;
+use crate::vec2::{Square, Vec2};
 use std::{
     fmt::Debug,
     ops::{Deref, DerefMut},
@@ -25,18 +25,14 @@ where
 
     /// Try fill given area with given value, return error if the area is out of range
     pub fn try_fill(&mut self, anchor: Vec2, size: Vec2, value: T) -> Result<(), String> {
-        for dy in 0..size.y {
-            for dx in 0..size.x {
-                if self.get(&anchor + &Vec2::new(dx, dy)).is_none() {
-                    return Err("Fill area out of range".to_string());
-                }
-            }
+        let square = Square::new(anchor, size);
+        // Check the fillin area is not out of range
+        if square.row_iter().any(|pos| self.get(pos).is_none()) {
+            return Err("Fill area out of range".to_string());
         }
-
-        for dy in 0..size.y {
-            for dx in 0..size.x {
-                *self.get_mut(&anchor + &Vec2::new(dx, dy)).unwrap() = value.clone();
-            }
+        // Fillin
+        for pos in square.row_iter() {
+            *self.get_mut(pos).unwrap() = value.clone();
         }
 
         Ok(())
@@ -54,22 +50,20 @@ where
         size: Vec2,
         value: T,
     ) -> Result<(), String> {
-        for dy in 0..size.y {
-            for dx in 0..size.x {
-                match self.get(&anchor + &Vec2::new(dx, dy)) {
-                    Some(value) if value != &T::default() => {
-                        return Err("Fill area covers non-default value".to_string())
-                    }
-                    None => return Err("Fill area out of range".to_string()),
-                    _ => {}
+        let square = Square::new(anchor, size);
+        // Check there is not overwriting
+        for pos in square.row_iter() {
+            match self.get(pos) {
+                Some(value) if value != &T::default() => {
+                    return Err("Fill area covers non-default value".to_string())
                 }
+                None => return Err("Fill area out of range".to_string()),
+                _ => {}
             }
         }
-
-        for dy in 0..size.y {
-            for dx in 0..size.x {
-                *self.get_mut(&anchor + &Vec2::new(dx, dy)).unwrap() = value.clone();
-            }
+        // Fillin
+        for pos in square.row_iter() {
+            *self.get_mut(pos).unwrap() = value.clone();
         }
 
         Ok(())

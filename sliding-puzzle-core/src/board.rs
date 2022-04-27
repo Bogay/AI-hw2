@@ -1,4 +1,7 @@
-use crate::{matrix::Matrix2D, vec2::Vec2};
+use crate::{
+    matrix::Matrix2D,
+    vec2::{Square, Vec2},
+};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use std::{
@@ -160,26 +163,23 @@ impl Board {
         let mut result_blocks = Vec::with_capacity(blocks.len());
         let mut holes = vec![];
 
-        for i in 0..size.y {
-            for j in 0..size.x {
-                let pos = Vec2::new(j, i);
-                if grid.get(pos).unwrap() == &0 {
-                    if let Some(block) = blocks.get(next_block_id) {
-                        // TODO: return error instead of assert
-                        assert_eq!(block.id, (next_block_id + 1) as i8);
-                        if grid.try_fill(pos, block.size, block.id).is_ok() {
-                            result_blocks.push(Block {
-                                id: block.id,
-                                pos,
-                                size: block.size,
-                            });
-                            next_block_id += 1;
-                        } else {
-                            holes.push(pos);
-                        }
+        for pos in Square::at_origin(size).row_iter() {
+            if grid.get(pos).unwrap() == &0 {
+                if let Some(block) = blocks.get(next_block_id) {
+                    // TODO: return error instead of assert
+                    assert_eq!(block.id, (next_block_id + 1) as i8);
+                    if grid.try_fill(pos, block.size, block.id).is_ok() {
+                        result_blocks.push(Block {
+                            id: block.id,
+                            pos,
+                            size: block.size,
+                        });
+                        next_block_id += 1;
                     } else {
                         holes.push(pos);
                     }
+                } else {
+                    holes.push(pos);
                 }
             }
         }
@@ -224,21 +224,13 @@ impl Board {
             .ok_or_else(|| format!("id {} not found", id))?;
         assert_eq!(id, block.id);
         self.grid.try_fill(block.pos, block.size, 0)?;
-        for dx in 0..block.size.x {
-            for dy in 0..block.size.y {
-                let pos = &block.pos + &Vec2::new(dx, dy);
-                self.holes.insert(pos);
-            }
-        }
+        self.holes
+            .extend(Square::new(block.pos, block.size).col_iter());
         block.pos = &block.pos + &dir.to_vec2();
         self.grid.try_fill(block.pos, block.size, block.id)?;
-        for dx in 0..block.size.x {
-            for dy in 0..block.size.y {
-                let pos = &block.pos + &Vec2::new(dx, dy);
-                self.holes.remove(&pos);
-            }
+        for pos in Square::new(block.pos, block.size).col_iter() {
+            self.holes.remove(&pos);
         }
-
         // FIXME: This might be insufficient
         self._possible_moves = Self::generate_possible_moves(&mut self.holes.iter(), &self.grid);
 
@@ -255,20 +247,17 @@ impl Board {
         assert_eq!(id, block.id);
         let move_vec = dir.to_vec2();
 
-        for dx in 0..block.size.x {
-            for dy in 0..block.size.y {
-                let before_move = &block.pos + &Vec2::new(dx, dy);
-                let after_move = &before_move + &move_vec;
-                if let Some(next_id) = self.grid.get(after_move) {
-                    if next_id != &0 && next_id != &id {
-                        return Err(format!(
-                            "Invalid move, {} has occupied by {}",
-                            after_move, next_id,
-                        ));
-                    }
-                } else {
-                    return Err("Move out of range".to_string());
+        for before_move in Square::new(block.pos, block.size).col_iter() {
+            let after_move = &before_move + &move_vec;
+            if let Some(next_id) = self.grid.get(after_move) {
+                if next_id != &0 && next_id != &id {
+                    return Err(format!(
+                        "Invalid move, {} has occupied by {}",
+                        after_move, next_id,
+                    ));
                 }
+            } else {
+                return Err("Move out of range".to_string());
             }
         }
 
@@ -316,21 +305,18 @@ impl Board {
         let mut grid = Matrix2D::fill(size, 0i8);
         let mut rng = thread_rng();
 
-        'fill: for i in 0..size.y {
-            for j in 0..size.x {
-                let pos = Vec2::new(j, i);
-                if grid.get(pos).unwrap() == &0 {
-                    possible_block_sizes.shuffle(&mut rng);
-                    let id = next_id;
-                    next_id += 1;
-                    for block_size in &possible_block_sizes {
-                        if grid.try_fill_without_cover(pos, *block_size, id).is_ok() {
-                            break;
-                        }
+        for pos in Square::at_origin(size).row_iter() {
+            if grid.get(pos).unwrap() == &0 {
+                possible_block_sizes.shuffle(&mut rng);
+                let id = next_id;
+                next_id += 1;
+                for block_size in &possible_block_sizes {
+                    if grid.try_fill_without_cover(pos, *block_size, id).is_ok() {
+                        break;
                     }
-                    if next_id > block_count {
-                        break 'fill;
-                    }
+                }
+                if next_id > block_count {
+                    break;
                 }
             }
         }
@@ -375,18 +361,12 @@ impl TryFrom<Matrix2D<i8>> for Board {
         // Parse holes & blocks
         let mut blocks = HashMap::new();
         let mut holes = vec![];
-        for row_i in 0..size.y {
-            for col_i in 0..size.x {
-                let pos = Vec2::new(col_i as i8, row_i as i8);
-                let id = grid.get(pos).expect("This query should fit inside matrix");
-                if id == &0 {
-                    holes.push(pos);
-                } else {
-                    blocks
-                        .entry(*id)
-                        .or_insert(vec![])
-                        .push(Vec2::new(col_i as i8, row_i as i8));
-                }
+        for pos in Square::at_origin(size).row_iter() {
+            let id = grid.get(pos).expect("This query should fit inside matrix");
+            if id == &0 {
+                holes.push(pos);
+            } else {
+                blocks.entry(*id).or_insert(vec![]).push(pos);
             }
         }
         let blocks = Self::parse_blocks(blocks)?;
