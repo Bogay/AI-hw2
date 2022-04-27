@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Command",""]],"fn":[["get_output","Get output from given path. If not, use stdout"],["main",""],["write_fail_result",""],["write_success_result",""]],"mod":[["search",""],["util",""]],"struct":[["Cli","CLI entry"]]});
+initSidebarItems({"enum":[["Command",""]],"fn":[["get_output","Get output from given path. If not, use stdout"],["main",""],["print_malloc_stats",""],["write_fail_result",""],["write_success_result",""]],"mod":[["search",""],["util",""]],"static":[["GLOBAL",""]],"struct":[["Cli","Sliding puzzle CLI entry"]]});
